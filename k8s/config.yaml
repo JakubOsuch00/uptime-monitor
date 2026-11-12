@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: uptime-config
+data:
+  CHECK_INTERVAL: "30"
+  DEFAULT_TARGETS: "google=https://www.google.com,github=https://github.com,wikipedia=https://pl.wikipedia.org"
+---
+# only for the local demo - in a real setup this comes from a secret manager
+# (sealed-secrets, external-secrets, vault) and is not committed
+apiVersion: v1
+kind: Secret
+metadata:
+  name: uptime-db
+type: Opaque
+stringData:
+  POSTGRES_USER: uptime
+  POSTGRES_PASSWORD: local-dev-password
+  POSTGRES_DB: uptime
+  DATABASE_URL: postgresql+psycopg://uptime:local-dev-password@postgres:5432/uptime

@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  replicas: 1
+  # two workers at the same time would check every site twice
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+    spec:
+      # otherwise k8s injects WORKER_METRICS_PORT=tcp://... for the worker-metrics service
+      # and it overrides our own setting with the same name
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: worker
+          image: uptime-monitor:local
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "app.worker"]
+          ports:
+            - containerPort: 9100
+          envFrom:
+            - configMapRef:
+                name: uptime-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: uptime-db
+                  key: DATABASE_URL
+          livenessProbe:
+            httpGet: { path: /metrics, port: 9100 }
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits: { memory: 192Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker-metrics
+spec:
+  selector:
+    app: worker
+  ports:
+    - port: 9100
