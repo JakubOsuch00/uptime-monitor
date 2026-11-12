@@ -1,3 +1,5 @@
+import logging
+import time
 from datetime import UTC, datetime
 
 from sqlalchemy import (
@@ -10,9 +12,12 @@ from sqlalchemy import (
     create_engine,
     select,
 )
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from app import config
+
+log = logging.getLogger(__name__)
 
 
 class Base(DeclarativeBase):
@@ -51,8 +56,17 @@ engine = make_engine()
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 
-def init_db(eng=None) -> None:
-    Base.metadata.create_all(eng or engine)
+def init_db(eng=None, attempts: int = 30, delay: float = 2) -> None:
+    # in k8s/compose the app can start before postgres accepts connections
+    for attempt in range(1, attempts + 1):
+        try:
+            Base.metadata.create_all(eng or engine)
+            return
+        except OperationalError:
+            if attempt == attempts:
+                raise
+            log.warning("database not ready (attempt %d/%d), retrying", attempt, attempts)
+            time.sleep(delay)
 
 
 def seed_targets(session: Session, spec: str) -> None:

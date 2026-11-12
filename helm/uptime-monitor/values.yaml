@@ -1,0 +1,44 @@
+image:
+  repository: ghcr.io/jakubosuch00/uptime-monitor
+  tag: latest
+  pullPolicy: IfNotPresent
+
+config:
+  checkInterval: 30
+  defaultTargets: "google=https://www.google.com,github=https://github.com"
+
+api:
+  replicas: 2
+  resources:
+    requests: { cpu: 50m, memory: 96Mi }
+    limits: { memory: 256Mi }
+  # needs metrics-server in the cluster
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPU: 70
+
+worker:
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits: { memory: 192Mi }
+
+postgres:
+  # set to false and fill externalDatabaseUrl to use a managed database
+  enabled: true
+  image: postgres:17-alpine
+  user: uptime
+  database: uptime
+  # override with --set postgres.password=... (or use existingSecret)
+  password: local-dev-password
+  storage: 1Gi
+
+# name of an existing secret with DATABASE_URL key, the chart won't create one then
+existingSecret: ""
+externalDatabaseUrl: ""
+
+ingress:
+  enabled: true
+  className: ""
+  host: uptime.localhost

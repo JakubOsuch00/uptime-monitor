@@ -62,3 +62,20 @@ def test_metrics(client):
     client.get("/health")
     body = client.get("/metrics").text
     assert 'http_requests_total{method="GET",path="/health",status="200"}' in body
+
+
+def test_init_db_retries(monkeypatch):
+    from sqlalchemy.exc import OperationalError
+
+    from app import db
+
+    calls = []
+
+    def flaky(_engine):
+        calls.append(1)
+        if len(calls) < 3:
+            raise OperationalError("SELECT 1", {}, Exception("connection refused"))
+
+    monkeypatch.setattr(db.Base.metadata, "create_all", flaky)
+    db.init_db(attempts=5, delay=0)
+    assert len(calls) == 3

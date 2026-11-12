@@ -1,0 +1,9 @@
+uptime-monitor is installed.
+{{- if .Values.ingress.enabled }}
+
+Status page: http://{{ .Values.ingress.host }}
+(with the local kind cluster from terraform/ add the port, e.g. http://{{ .Values.ingress.host }}:8088)
+{{- end }}
+
+Check pods:
+  kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}

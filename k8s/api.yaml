@@ -33,6 +33,11 @@ spec:
                 secretKeyRef:
                   name: uptime-db
                   key: DATABASE_URL
+          # gives the app up to 60s to connect to the database before liveness kicks in
+          startupProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 2
+            failureThreshold: 30
           livenessProbe:
             httpGet: { path: /health, port: 8000 }
             periodSeconds: 10
