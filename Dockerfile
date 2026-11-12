@@ -8,6 +8,9 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# security fixes for system packages that are newer than the base image
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+
 RUN useradd --create-home --uid 10001 app
 WORKDIR /app
 
