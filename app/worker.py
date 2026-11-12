@@ -60,7 +60,10 @@ def main():
     start_http_server(config.WORKER_METRICS_PORT)
     log.info("worker started, interval %ss", config.CHECK_INTERVAL)
 
-    with httpx.Client(timeout=config.CHECK_TIMEOUT, follow_redirects=True) as client:
+    headers = {"User-Agent": config.USER_AGENT}  # some sites (wikipedia) block requests without it
+    with httpx.Client(
+        timeout=config.CHECK_TIMEOUT, follow_redirects=True, headers=headers
+    ) as client:
         while running:
             try:
                 run_once(client)

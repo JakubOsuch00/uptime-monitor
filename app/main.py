@@ -12,8 +12,7 @@ from sqlalchemy import case, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import config
-from app.db import Check, SessionLocal, Target, init_db, seed_targets
+from app.db import Check, SessionLocal, Target, init_db
 
 REQUESTS = Counter("http_requests_total", "HTTP requests", ["method", "path", "status"])
 LATENCY = Histogram("http_request_duration_seconds", "HTTP request latency", ["path"])
@@ -22,8 +21,6 @@ LATENCY = Histogram("http_request_duration_seconds", "HTTP request latency", ["p
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
-    with SessionLocal() as session:
-        seed_targets(session, config.DEFAULT_TARGETS)
     yield
 
 
