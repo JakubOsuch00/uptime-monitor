@@ -23,8 +23,43 @@ jobs:
       - run: ruff format --check .
       - run: pytest -v
 
-  image:
+  deploy-test:
+    # installs the helm chart on a throwaway kind cluster and checks the app responds
     needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - run: helm lint helm/uptime-monitor
+      - run: docker build -t uptime-monitor:ci .
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: ci
+      - run: kind load docker-image uptime-monitor:ci --name ci
+      - name: Install chart
+        run: |
+          helm install uptime helm/uptime-monitor \
+            --namespace uptime --create-namespace \
+            --set image.repository=uptime-monitor --set image.tag=ci \
+            --set ingress.enabled=false \
+            --wait --timeout 5m
+      - name: Smoke test
+        run: |
+          kubectl -n uptime port-forward svc/uptime-api 8000:8000 &
+          sleep 5
+          curl -sf localhost:8000/ready
+          curl -sf -X POST localhost:8000/api/targets -H 'Content-Type: application/json' \
+            -d '{"name": "example", "url": "https://example.com"}'
+          curl -sf localhost:8000/api/targets | grep example
+      - name: Debug info
+        if: failure()
+        run: |
+          kubectl -n uptime get pods
+          kubectl -n uptime describe pods
+          kubectl -n uptime logs -l app.kubernetes.io/instance=uptime --all-containers --tail=50
+
+  image:
+    needs: [test, deploy-test]
     runs-on: ubuntu-latest
     permissions:
       contents: read
