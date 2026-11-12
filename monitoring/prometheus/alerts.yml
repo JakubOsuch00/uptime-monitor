@@ -1,0 +1,26 @@
+groups:
+  - name: uptime
+    rules:
+      - alert: TargetDown
+        expr: uptime_target_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.target }} is down"
+
+      - alert: TargetSlow
+        expr: histogram_quantile(0.95, sum by (target, le) (rate(uptime_response_seconds_bucket[10m]))) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.target }} p95 response time is above 2s"
+
+      - alert: WorkerDown
+        expr: up{job="worker"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "worker is not running, nothing is being checked"
